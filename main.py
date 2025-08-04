@@ -13,10 +13,10 @@ with open('family_tree.json', 'r', encoding='utf-8') as f:
     family_data = json.load(f)
 
 # 设置节点参数
-NODE_WIDTH = 0.8
-NODE_HEIGHT = 0.4
+NODE_WIDTH = 4
+NODE_HEIGHT = 2
 HORIZONTAL_SPACING = 1.5
-VERTICAL_SPACING = 1.5
+VERTICAL_SPACING = 3
 MIN_X_SPACING = 0.5  # 节点间最小水平间距
 
 # 构建树结构
@@ -117,10 +117,7 @@ def draw_family_tree(root):
             ax.plot([x1, x2], [mid_y, mid_y], 'k-', linewidth=1.5)  # 水平
             ax.plot([x2, x2], [mid_y, y2], 'k-', linewidth=1.5)  # 垂直向下
             
-            # 添加箭头指示方向
-            ax.annotate('', xy=(x2, y2), xytext=(x2, mid_y + 0.1),
-                        arrowprops=dict(arrowstyle='->', color='black', lw=1.5))
-            
+            # 已移除箭头部分
             draw_connections(child)
     
     draw_connections(root)
