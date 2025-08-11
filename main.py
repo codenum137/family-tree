@@ -8,202 +8,147 @@ import numpy as np
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
-# 文廣祖后藤图 四房崇智祖后藤图 文达祖后藤图
-TITILE = "文达祖后藤图"
+# 文达祖后藤图
+TITLE = "文达祖后藤图"
 
 # 加载家谱数据
-with open('.\\json_file\\' + TITILE + '.json', 'r', encoding='utf-8') as f:
+with open('.\\json_file\\' + TITLE + '.json', 'r', encoding='utf-8') as f:
     family_data = json.load(f)
 
 # 从JSON中读取字辈信息（如果没有则设为空列表）
 GENERATIONS = family_data.get('generations', [])
 
-
 # 设置节点参数
 NODE_WIDTH = 4
-NODE_HEIGHT = 2
-HORIZONTAL_SPACING = 1.5
-VERTICAL_SPACING = 3
-MIN_X_SPACING = 0.5  # 节点间最小水平间距
+NODE_HEIGHT_HORIZONTAL = 2  # 横向文字的节点高度
+NODE_HEIGHT_VERTICAL = 4   # 纵向文字的节点高度（增加高度）
+PADDING_HORIZONTAL = 0.3   # 横向文字的填充距离
+PADDING_VERTICAL = 0.5     # 纵向文字的填充距离（增加填充）
+LEVEL_SPACING = 3          # 层级间距
 
-# 构建树结构
-class TreeNode:
-    def __init__(self, name, children=None):
-        self.name = name
-        self.children = children if children else []
+# 定义节点类
+class Node:
+    def __init__(self, data, parent=None):
+        self.data = data
+        self.parent = parent
+        self.children = []
+        self.depth = 0
+        self.width = 0
         self.x = 0
         self.y = 0
-        self.width = 0  # 节点所需宽度
-        self.depth = 0  # 节点深度
-        self.parent = None
-
-    def add_child(self, child_node):
-        self.children.append(child_node)
-        child_node.parent = self
+        self.height = NODE_HEIGHT_HORIZONTAL  # 默认高度
+        
+    def add_child(self, child):
+        self.children.append(child)
+        child.parent = self
+        child.depth = self.depth + 1
+        
+        # 根据深度设置节点高度
+        if child.depth >= 2:  # 第三代及以后
+            child.height = NODE_HEIGHT_VERTICAL
 
 # 构建树结构
 def build_tree(data, parent=None):
-    node = TreeNode(data['name'])
-    node.parent = parent
+    node = Node(data, parent)
     
     if 'children' in data:
-        for child in data['children']:
-            child_node = build_tree(child, node)
+        for child_data in data['children']:
+            child_node = build_tree(child_data, node)
             node.add_child(child_node)
     
     return node
 
 # 计算节点深度
-def calculate_depth(node, depth=0):
-    node.depth = depth
+def calculate_depth(node):
+    if node.parent:
+        node.depth = node.parent.depth + 1
+    
     for child in node.children:
-        calculate_depth(child, depth + 1)
+        calculate_depth(child)
 
-# 自底向上计算节点所需宽度
+# 自底向上计算节点宽度
 def calculate_width(node):
-    if not node.children:  # 叶子节点
-        node.width = NODE_WIDTH
-        return node.width
+    if not node.children:
+        node.width = 1
+        return 1
     
-    # 先计算所有子节点的宽度
-    children_widths = []
+    total_width = 0
     for child in node.children:
-        children_widths.append(calculate_width(child))
+        total_width += calculate_width(child)
     
-    # 计算子节点总宽度（包括间距）
-    total_children_width = sum(children_widths) + (len(node.children) - 1) * HORIZONTAL_SPACING
-    
-    # 父节点宽度取子节点总宽度和自身宽度的最大值
-    node.width = max(total_children_width, NODE_WIDTH)
+    node.width = max(total_width, 1)
     return node.width
 
 # 自底向上计算节点位置
-def calculate_positions(node, x_offset=0):
-    if not node.children:  # 叶子节点
-        node.x = x_offset + node.width / 2
-        return node.x, node.width
+def calculate_positions(node, x=0):
+    node.x = x + node.width / 2
     
-    # 先计算所有子节点的位置
-    children_positions = []
-    current_x = x_offset
+    if not node.children:
+        return
     
+    child_x = x
     for child in node.children:
-        child_x, child_width = calculate_positions(child, current_x)
-        children_positions.append((child_x, child_width))
-        current_x += child_width + HORIZONTAL_SPACING
-    
-    # 计算子节点位置的平均值作为父节点的x坐标
-    node.x = sum(pos[0] for pos in children_positions) / len(children_positions)
-    
-    # 返回父节点位置和总宽度
-    total_width = sum(pos[1] for pos in children_positions) + (len(node.children) - 1) * HORIZONTAL_SPACING
-    return node.x, total_width
+        calculate_positions(child, child_x)
+        child_x += child.width
 
-# 设置y坐标（根据深度）
-def set_y_coordinates(node, y_start=0):
-    node.y = y_start - node.depth * VERTICAL_SPACING
+# 设置y坐标
+def set_y_coordinates(node, y=0):
+    node.y = y
+    
+    # 根据节点深度设置y坐标间隔
+    y_spacing = LEVEL_SPACING
+    if node.depth >= 2:  # 第三代及以后
+        y_spacing = NODE_HEIGHT_VERTICAL + PADDING_VERTICAL * 2 + 1  # 增加垂直间距
+    
     for child in node.children:
-        set_y_coordinates(child, y_start)
+        set_y_coordinates(child, y - y_spacing)
 
 # 绘制家谱图
-def draw_family_tree(root):
-    fig, ax = plt.subplots(figsize=(18, 10))
+def draw_family_tree(node):
+    # 绘制节点
+    for child in node.children:
+        draw_family_tree(child)
     
-    # 先绘制所有连接线
-    def draw_connections(node):
-        for child in node.children:
-            # 计算连接点（从父节点底部到子节点顶部）
-            x1, y1 = node.x, node.y - NODE_HEIGHT/2
-            x2, y2 = child.x, child.y + NODE_HEIGHT/2
-            
-            # 计算中间点
-            mid_y = (y1 + y2) / 2
-            
-            # 绘制折线：垂直向下 → 水平 → 垂直向下
-            ax.plot([x1, x1], [y1, mid_y], 'k-', linewidth=1.5)  # 垂直向下
-            ax.plot([x1, x2], [mid_y, mid_y], 'k-', linewidth=1.5)  # 水平
-            ax.plot([x2, x2], [mid_y, y2], 'k-', linewidth=1.5)  # 垂直向下
-            
-            draw_connections(child)
+    # 绘制连接线
+    for child in node.children:
+        plt.plot([node.x, child.x], [node.y - node.height/2, child.y + child.height/2], 'k-')
     
-    draw_connections(root)
+    # 绘制节点矩形
+    rect = patches.Rectangle(
+        (node.x - NODE_WIDTH/2, node.y - node.height/2),
+        NODE_WIDTH, node.height,
+        linewidth=1, edgecolor='black', facecolor='white'
+    )
+    ax.add_patch(rect)
     
-    # 再绘制所有节点（确保节点在连接线上方）
-    def draw_nodes(node):
-        # 绘制方形节点
-        rect = patches.Rectangle(
-            (node.x - NODE_WIDTH/2, node.y - NODE_HEIGHT/2),
-            NODE_WIDTH, NODE_HEIGHT,
-            linewidth=1.5, edgecolor='black', facecolor='white', zorder=3
+    # 绘制节点文字
+    if node.depth < 2:  # 第一代和第二代 - 横向排列
+        plt.text(
+            node.x, node.y, node.data['name'],
+            ha='center', va='center',
+            fontsize=10
         )
-        ax.add_patch(rect)
-        
-        # 添加节点文字
-        ax.text(node.x, node.y, node.name, 
-                ha='center', va='center', fontsize=10, fontweight='bold', zorder=4)
-        
-        for child in node.children:
-            draw_nodes(child)
+    else:  # 第三代及以后 - 纵向排列
+        # 将名字拆分为单个字符并用换行符连接
+        vertical_name = '\n'.join(list(node.data['name']))
+        plt.text(
+            node.x, node.y, vertical_name,
+            ha='center', va='center',
+            fontsize=8, linespacing=1.5  # 增加行间距
+        )
     
-    draw_nodes(root)
-    
-    # 收集所有节点信息
-    all_nodes = []
-    def collect_nodes(node):
-        all_nodes.append(node)
-        for child in node.children:
-            collect_nodes(child)
-    
-    collect_nodes(root)
-    
-    # 计算图形范围
-    min_x = min(node.x - NODE_WIDTH/2 for node in all_nodes) - 1
-    max_x = max(node.x + NODE_WIDTH/2 for node in all_nodes) + 1
-    min_y = min(node.y - NODE_HEIGHT/2 for node in all_nodes) - 1
-    max_y = max(node.y + NODE_HEIGHT/2 for node in all_nodes) + 1
-    
-    # 添加字辈标签
-    # 获取所有存在的深度
-    depths = sorted(set(node.depth for node in all_nodes))
-    
-    # 绘制字辈标签（仅在GENERATIONS非空时）
-    if GENERATIONS:  # 添加判断条件
-        # 为每个深度添加字辈标签
-        for depth in depths:
-            if depth < len(GENERATIONS):
-                # 获取该深度的y坐标（取该深度任意节点的y坐标）
-                y_coord = next(node.y for node in all_nodes if node.depth == depth)
-                
-                # 添加字辈标签背景
-                label_bg = patches.FancyBboxPatch(
-                    (min_x - 4, y_coord - NODE_HEIGHT/2),
-                    3.5, NODE_HEIGHT,
-                    boxstyle="round,pad=0.1",
-                    linewidth=1,
-                    edgecolor='none',
-                    facecolor='#f0f0f0',
-                    alpha=0.8,
-                    zorder=2
-                )
-                ax.add_patch(label_bg)
-                
-                # 添加字辈文字
-                ax.text(min_x - 2.25, y_coord, GENERATIONS[depth], 
-                        ha='center', va='center', fontsize=10, 
-                        fontweight='bold', color='#333333', zorder=3)
-    
-    # 设置图形范围
-    ax.set_xlim(min_x - 5, max_x)  # 扩展左侧边界以容纳字辈标签
-    ax.set_ylim(min_y, max_y)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    
-    # 添加标题
-    plt.title(TITILE, fontsize=16, fontweight='bold', pad=20)
-    
-    # 保存高分辨率图片
-    plt.savefig('.\\瓜藤图\\' + TITILE + '.png', dpi=300, bbox_inches='tight')
-    plt.show()
+    # 绘制字辈标签（如果有）
+    if node.depth < len(GENERATIONS):
+        plt.text(
+            node.x, node.y + node.height/2 + 0.2,
+            GENERATIONS[node.depth],
+            ha='center', va='bottom',
+            fontsize=8, style='italic'
+        )
+
+# 创建图形
+fig, ax = plt.subplots(figsize=(20, 15))
+ax.set_aspect('equal')
 
 # 构建树结构
 root = build_tree(family_data)
@@ -222,3 +167,31 @@ set_y_coordinates(root)
 
 # 绘制家谱图
 draw_family_tree(root)
+
+# 设置图形范围
+all_nodes = []
+def collect_nodes(node):
+    all_nodes.append(node)
+    for child in node.children:
+        collect_nodes(child)
+
+collect_nodes(root)
+
+if all_nodes:
+    min_x = min(node.x - NODE_WIDTH/2 for node in all_nodes) - 1
+    max_x = max(node.x + NODE_WIDTH/2 for node in all_nodes) + 1
+    min_y = min(node.y - node.height/2 for node in all_nodes) - 1
+    max_y = max(node.y + node.height/2 for node in all_nodes) + 1
+    
+    plt.xlim(min_x, max_x)
+    plt.ylim(min_y, max_y)
+
+# 隐藏坐标轴
+plt.axis('off')
+
+# 添加标题
+plt.title(TITLE, fontsize=16, pad=20)
+
+# 保存图形
+plt.savefig(f'{TITLE}.png', dpi=300, bbox_inches='tight')
+plt.show()
