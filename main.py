@@ -8,9 +8,16 @@ import numpy as np
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
+# 文廣祖后藤图 四房崇智祖后藤图 文达祖后藤图
+TITILE = "文达祖后藤图"
+
 # 加载家谱数据
-with open('family_tree.json', 'r', encoding='utf-8') as f:
+with open('.\\json_file\\' + TITILE + '.json', 'r', encoding='utf-8') as f:
     family_data = json.load(f)
+
+# 从JSON中读取字辈信息（如果没有则设为空列表）
+GENERATIONS = family_data.get('generations', [])
+
 
 # 设置节点参数
 NODE_WIDTH = 4
@@ -100,7 +107,7 @@ def set_y_coordinates(node, y_start=0):
 
 # 绘制家谱图
 def draw_family_tree(root):
-    fig, ax = plt.subplots(figsize=(16, 10))
+    fig, ax = plt.subplots(figsize=(18, 10))
     
     # 先绘制所有连接线
     def draw_connections(node):
@@ -117,7 +124,6 @@ def draw_family_tree(root):
             ax.plot([x1, x2], [mid_y, mid_y], 'k-', linewidth=1.5)  # 水平
             ax.plot([x2, x2], [mid_y, y2], 'k-', linewidth=1.5)  # 垂直向下
             
-            # 已移除箭头部分
             draw_connections(child)
     
     draw_connections(root)
@@ -141,7 +147,7 @@ def draw_family_tree(root):
     
     draw_nodes(root)
     
-    # 设置图形范围
+    # 收集所有节点信息
     all_nodes = []
     def collect_nodes(node):
         all_nodes.append(node)
@@ -150,21 +156,53 @@ def draw_family_tree(root):
     
     collect_nodes(root)
     
+    # 计算图形范围
     min_x = min(node.x - NODE_WIDTH/2 for node in all_nodes) - 1
     max_x = max(node.x + NODE_WIDTH/2 for node in all_nodes) + 1
     min_y = min(node.y - NODE_HEIGHT/2 for node in all_nodes) - 1
     max_y = max(node.y + NODE_HEIGHT/2 for node in all_nodes) + 1
     
-    ax.set_xlim(min_x, max_x)
+    # 添加字辈标签
+    # 获取所有存在的深度
+    depths = sorted(set(node.depth for node in all_nodes))
+    
+    # 绘制字辈标签（仅在GENERATIONS非空时）
+    if GENERATIONS:  # 添加判断条件
+        # 为每个深度添加字辈标签
+        for depth in depths:
+            if depth < len(GENERATIONS):
+                # 获取该深度的y坐标（取该深度任意节点的y坐标）
+                y_coord = next(node.y for node in all_nodes if node.depth == depth)
+                
+                # 添加字辈标签背景
+                label_bg = patches.FancyBboxPatch(
+                    (min_x - 4, y_coord - NODE_HEIGHT/2),
+                    3.5, NODE_HEIGHT,
+                    boxstyle="round,pad=0.1",
+                    linewidth=1,
+                    edgecolor='none',
+                    facecolor='#f0f0f0',
+                    alpha=0.8,
+                    zorder=2
+                )
+                ax.add_patch(label_bg)
+                
+                # 添加字辈文字
+                ax.text(min_x - 2.25, y_coord, GENERATIONS[depth], 
+                        ha='center', va='center', fontsize=10, 
+                        fontweight='bold', color='#333333', zorder=3)
+    
+    # 设置图形范围
+    ax.set_xlim(min_x - 5, max_x)  # 扩展左侧边界以容纳字辈标签
     ax.set_ylim(min_y, max_y)
     ax.set_aspect('equal')
     ax.axis('off')
     
     # 添加标题
-    plt.title('何氏家谱图', fontsize=16, fontweight='bold', pad=20)
+    plt.title(TITILE, fontsize=16, fontweight='bold', pad=20)
     
     # 保存高分辨率图片
-    plt.savefig('familytree.png', dpi=300, bbox_inches='tight')
+    plt.savefig('.\\瓜藤图\\' + TITILE + '.png', dpi=300, bbox_inches='tight')
     plt.show()
 
 # 构建树结构
