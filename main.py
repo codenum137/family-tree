@@ -20,10 +20,10 @@ GENERATIONS = family_data.get('generations', [])
 
 # 设置节点参数
 
-NODE_WIDTH_HORIZONTAL = 2 # 横向文字的节点宽度
-NODE_HEIGHT_HORIZONTAL = 1  # 横向文字的节点高度
-NODE_WIDTH_VERTICAL = 2 # 纵向文字的节点宽度（减小宽度）
-NODE_HEIGHT_VERTICAL = 4   # 纵向文字的节点高度（增加高度）
+NODE_WIDTH_HORIZONTAL = 2.5 # 横向文字的节点宽度
+NODE_HEIGHT_HORIZONTAL = 1.2  # 横向文字的节点高度
+NODE_WIDTH_VERTICAL = 1.2 # 纵向文字的节点宽度（减小宽度）
+NODE_HEIGHT_VERTICAL = 3.5   # 纵向文字的节点高度（增加高度）
 PADDING_HORIZONTAL = 0.3   # 横向文字的填充距离
 PADDING_VERTICAL = 0.5     # 纵向文字的填充距离（增加填充）
 LEVEL_SPACING = 3          # 层级间距
@@ -87,9 +87,11 @@ def calculate_width(node):
 
 # 自底向上计算节点位置
 def calculate_positions(node, x=0):
-    # 获取布局宽度用于位置计算
+    # 获取布局宽度用于位置计算，考虑节点实际宽度
     layout_width = calculate_width(node)
-    node.x = x + layout_width / 2
+    # 计算布局间距，基于节点实际宽度
+    spacing_factor = max(node.width, 1.5) if hasattr(node, 'width') else 1.5
+    node.x = x + layout_width * spacing_factor / 2
     
     if not node.children:
         return
@@ -97,8 +99,9 @@ def calculate_positions(node, x=0):
     child_x = x
     for child in node.children:
         child_layout_width = calculate_width(child)
+        child_spacing = max(child.width, 1.5) if hasattr(child, 'width') else 1.5
         calculate_positions(child, child_x)
-        child_x += child_layout_width
+        child_x += child_layout_width * child_spacing
 
 # 设置y坐标
 def set_y_coordinates(node, y=0):
@@ -143,7 +146,7 @@ def draw_family_tree(node):
         plt.text(
             node.x, node.y, vertical_name,
             ha='center', va='center',
-            fontsize=8, linespacing=1.5  # 增加行间距
+            fontsize=10, linespacing=1.2  # 增加字体大小，调整行间距
         )
     
     # 绘制字辈标签（如果有）
