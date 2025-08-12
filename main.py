@@ -22,8 +22,8 @@ GENERATIONS = family_data.get('generations', [])
 
 NODE_WIDTH_HORIZONTAL = 2.5 # 横向文字的节点宽度
 NODE_HEIGHT_HORIZONTAL = 1.2  # 横向文字的节点高度
-NODE_WIDTH_VERTICAL = 1.2 # 纵向文字的节点宽度（减小宽度）
-NODE_HEIGHT_VERTICAL = 3.5   # 纵向文字的节点高度（增加高度）
+NODE_WIDTH_VERTICAL = 0.8 # 纵向文字的节点宽度（明显减小宽度）
+NODE_HEIGHT_VERTICAL = 2.5   # 纵向文字的节点高度（明显增加高度）
 PADDING_HORIZONTAL = 0.3   # 横向文字的填充距离
 PADDING_VERTICAL = 0.5     # 纵向文字的填充距离（增加填充）
 LEVEL_SPACING = 3          # 层级间距
@@ -69,6 +69,14 @@ def calculate_depth(node):
     if node.parent:
         node.depth = node.parent.depth + 1
     
+    # 根据深度设置节点大小（包括根节点）
+    if node.depth >= 2:  # 第三代及以后（纵向矩形）
+        node.width = NODE_WIDTH_VERTICAL
+        node.height = NODE_HEIGHT_VERTICAL
+    else:  # 前两代（横向矩形）
+        node.width = NODE_WIDTH_HORIZONTAL
+        node.height = NODE_HEIGHT_HORIZONTAL
+    
     for child in node.children:
         calculate_depth(child)
 
@@ -108,9 +116,10 @@ def set_y_coordinates(node, y=0):
     node.y = y
     
     # 根据节点深度设置y坐标间隔
-    y_spacing = LEVEL_SPACING
     if node.depth >= 2:  # 第三代及以后
-        y_spacing = NODE_HEIGHT_VERTICAL + PADDING_VERTICAL * 2 + 1  # 增加垂直间距
+        y_spacing = max(NODE_HEIGHT_VERTICAL + PADDING_VERTICAL * 2, 4)  # 基于节点高度设置合理间距
+    else:
+        y_spacing = LEVEL_SPACING
     
     for child in node.children:
         set_y_coordinates(child, y - y_spacing)
