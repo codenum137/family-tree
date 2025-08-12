@@ -20,13 +20,13 @@ GENERATIONS = family_data.get('generations', [])
 
 # 设置节点参数
 
-NODE_WIDTH_HORIZONTAL = 2.5 # 横向文字的节点宽度
-NODE_HEIGHT_HORIZONTAL = 1.2  # 横向文字的节点高度
+NODE_WIDTH_HORIZONTAL = 2 # 横向文字的节点宽度
+NODE_HEIGHT_HORIZONTAL = 1  # 横向文字的节点高度
 NODE_WIDTH_VERTICAL = 0.8 # 纵向文字的节点宽度（明显减小宽度）
-NODE_HEIGHT_VERTICAL = 2.5   # 纵向文字的节点高度（明显增加高度）
+NODE_HEIGHT_VERTICAL = 2   # 纵向文字的节点高度（明显增加高度）
 PADDING_HORIZONTAL = 0.3   # 横向文字的填充距离
 PADDING_VERTICAL = 0.5     # 纵向文字的填充距离（增加填充）
-LEVEL_SPACING = 3          # 层级间距
+LEVEL_SPACING = 3         # 层级间距
 
 # 定义节点类
 class Node:
@@ -97,8 +97,12 @@ def calculate_width(node):
 def calculate_positions(node, x=0):
     # 获取布局宽度用于位置计算，考虑节点实际宽度
     layout_width = calculate_width(node)
-    # 计算布局间距，基于节点实际宽度
-    spacing_factor = max(node.width, 1.5) if hasattr(node, 'width') else 1.5
+    # 计算布局间距，对不同深度使用不同的间距系数
+    if hasattr(node, 'depth') and node.depth < 2:  # 前两代使用较小的间距
+        spacing_factor = 1.2
+    else:  # 第三代以后使用基于宽度的间距
+        spacing_factor = max(node.width, 1.0) if hasattr(node, 'width') else 1.0
+    
     node.x = x + layout_width * spacing_factor / 2
     
     if not node.children:
@@ -107,7 +111,11 @@ def calculate_positions(node, x=0):
     child_x = x
     for child in node.children:
         child_layout_width = calculate_width(child)
-        child_spacing = max(child.width, 1.5) if hasattr(child, 'width') else 1.5
+        # 为子节点设置合适的间距
+        if hasattr(child, 'depth') and child.depth < 2:  # 前两代
+            child_spacing = 1.2
+        else:  # 第三代以后
+            child_spacing = max(child.width, 1.0) if hasattr(child, 'width') else 1.0
         calculate_positions(child, child_x)
         child_x += child_layout_width * child_spacing
 
@@ -117,7 +125,7 @@ def set_y_coordinates(node, y=0):
     
     # 根据节点深度设置y坐标间隔
     if node.depth >= 2:  # 第三代及以后
-        y_spacing = max(NODE_HEIGHT_VERTICAL + PADDING_VERTICAL * 2, 4)  # 基于节点高度设置合理间距
+        y_spacing = max(NODE_HEIGHT_VERTICAL + PADDING_VERTICAL * 1.5, 3)  # 基于节点高度设置合理间距
     else:
         y_spacing = LEVEL_SPACING
     
