@@ -7,6 +7,7 @@ def parse_markdown_family_tree(markdown_content):
     
     格式示例：
     # 标题
+    ## 字辈: 第一代,第二代,第三代,第四代
     - 第一代
       - 第二代A
         - 第三代A1
@@ -16,6 +17,7 @@ def parse_markdown_family_tree(markdown_content):
     lines = markdown_content.strip().split('\n')
     
     title = ""
+    generations = []
     root_data = None
     stack = []  # 用于跟踪层级关系
     
@@ -27,6 +29,12 @@ def parse_markdown_family_tree(markdown_content):
         # 解析标题
         if line.startswith('# '):
             title = line[2:].strip()
+            continue
+        
+        # 解析字辈信息
+        if line.startswith('## 字辈:') or line.startswith('## 字辈：'):
+            generations_text = line.split(':', 1)[1].strip() if ':' in line else line.split('：', 1)[1].strip()
+            generations = [gen.strip() for gen in generations_text.split(',')]
             continue
             
         # 解析家谱节点
@@ -71,6 +79,10 @@ def parse_markdown_family_tree(markdown_content):
                         parent['children'] = []
                     parent['children'].append(node_data)
                     stack.append(node_data)
+    
+    # 如果有字辈信息，添加到根数据中
+    if generations and root_data:
+        root_data["generations"] = generations
     
     return {
         "title": title,

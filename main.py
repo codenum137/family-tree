@@ -194,15 +194,6 @@ def draw_family_tree(node):
             ha='center', va='center',
             fontsize=10, linespacing=1.2  # 增加字体大小，调整行间距
         )
-    
-    # 绘制字辈标签（如果有）
-    if node.depth < len(GENERATIONS):
-        plt.text(
-            node.x, node.y + node.height/2 + 0.2,
-            GENERATIONS[node.depth],
-            ha='center', va='bottom',
-            fontsize=8, style='italic'
-        )
 
 # 创建图形
 fig, ax = plt.subplots(figsize=(20, 15))
@@ -238,7 +229,44 @@ if all_nodes:
     min_y = min(node.y - node.height/2 for node in all_nodes) - 1
     max_y = max(node.y + node.height/2 for node in all_nodes) + 1
     
-    plt.xlim(min_x, max_x)
+    # 添加字辈标签
+    # 获取所有存在的深度
+    depths = sorted(set(node.depth for node in all_nodes))
+    
+    # 绘制字辈标签（仅在GENERATIONS非空时）
+    if GENERATIONS:  # 添加判断条件
+        # 为每个深度添加字辈标签
+        for depth in depths:
+            if depth < len(GENERATIONS):
+                # 获取该深度的y坐标（取该深度任意节点的y坐标）
+                y_coord = next(node.y for node in all_nodes if node.depth == depth)
+                
+                # 根据节点深度确定标签高度
+                if depth >= 2:
+                    label_height = NODE_HEIGHT_VERTICAL
+                else:
+                    label_height = NODE_HEIGHT_HORIZONTAL
+                
+                # 添加字辈标签背景
+                label_bg = patches.FancyBboxPatch(
+                    (min_x - 4, y_coord - label_height/2),
+                    3.5, label_height,
+                    boxstyle="round,pad=0.1",
+                    linewidth=1,
+                    edgecolor='none',
+                    facecolor='#f0f0f0',
+                    alpha=0.8,
+                    zorder=2
+                )
+                ax.add_patch(label_bg)
+                
+                # 添加字辈文字
+                ax.text(min_x - 2.25, y_coord, GENERATIONS[depth], 
+                        ha='center', va='center', fontsize=10, 
+                        fontweight='bold', color='#333333', zorder=3)
+    
+    # 设置图形范围
+    ax.set_xlim(min_x - 5, max_x)  # 扩展左侧边界以容纳字辈标签
     plt.ylim(min_y, max_y)
 
 # 隐藏坐标轴
