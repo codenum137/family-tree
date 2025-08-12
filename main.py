@@ -19,8 +19,10 @@ with open('.\\json_file\\' + TITLE + '.json', 'r', encoding='utf-8') as f:
 GENERATIONS = family_data.get('generations', [])
 
 # 设置节点参数
-NODE_WIDTH = 4
-NODE_HEIGHT_HORIZONTAL = 2  # 横向文字的节点高度
+
+NODE_WIDTH_HORIZONTAL = 2 # 横向文字的节点宽度
+NODE_HEIGHT_HORIZONTAL = 1  # 横向文字的节点高度
+NODE_WIDTH_VERTICAL = 2 # 纵向文字的节点宽度（减小宽度）
 NODE_HEIGHT_VERTICAL = 4   # 纵向文字的节点高度（增加高度）
 PADDING_HORIZONTAL = 0.3   # 横向文字的填充距离
 PADDING_VERTICAL = 0.5     # 纵向文字的填充距离（增加填充）
@@ -33,7 +35,7 @@ class Node:
         self.parent = parent
         self.children = []
         self.depth = 0
-        self.width = 0
+        self.width = NODE_WIDTH_HORIZONTAL  # 默认为横向宽度
         self.x = 0
         self.y = 0
         self.height = NODE_HEIGHT_HORIZONTAL  # 默认高度
@@ -43,9 +45,13 @@ class Node:
         child.parent = self
         child.depth = self.depth + 1
         
-        # 根据深度设置节点高度
-        if child.depth >= 2:  # 第三代及以后
+        # 根据深度设置节点大小
+        if child.depth >= 2:  # 第三代及以后（纵向矩形）
+            child.width = NODE_WIDTH_VERTICAL
             child.height = NODE_HEIGHT_VERTICAL
+        else:  # 前两代（横向矩形）
+            child.width = NODE_WIDTH_HORIZONTAL
+            child.height = NODE_HEIGHT_HORIZONTAL
 
 # 构建树结构
 def build_tree(data, parent=None):
@@ -66,30 +72,33 @@ def calculate_depth(node):
     for child in node.children:
         calculate_depth(child)
 
-# 自底向上计算节点宽度
+# 自底向上计算节点布局宽度（用于位置计算）
 def calculate_width(node):
     if not node.children:
-        node.width = 1
+        # 叶子节点返回1个单位作为布局宽度
         return 1
     
     total_width = 0
     for child in node.children:
         total_width += calculate_width(child)
     
-    node.width = max(total_width, 1)
-    return node.width
+    # 返回所有子节点的布局宽度总和
+    return max(total_width, 1)
 
 # 自底向上计算节点位置
 def calculate_positions(node, x=0):
-    node.x = x + node.width / 2
+    # 获取布局宽度用于位置计算
+    layout_width = calculate_width(node)
+    node.x = x + layout_width / 2
     
     if not node.children:
         return
     
     child_x = x
     for child in node.children:
+        child_layout_width = calculate_width(child)
         calculate_positions(child, child_x)
-        child_x += child.width
+        child_x += child_layout_width
 
 # 设置y坐标
 def set_y_coordinates(node, y=0):
@@ -115,8 +124,8 @@ def draw_family_tree(node):
     
     # 绘制节点矩形
     rect = patches.Rectangle(
-        (node.x - NODE_WIDTH/2, node.y - node.height/2),
-        NODE_WIDTH, node.height,
+        (node.x - node.width/2, node.y - node.height/2),
+        node.width, node.height,
         linewidth=1, edgecolor='black', facecolor='white'
     )
     ax.add_patch(rect)
@@ -156,9 +165,6 @@ root = build_tree(family_data)
 # 计算节点深度
 calculate_depth(root)
 
-# 自底向上计算节点宽度
-calculate_width(root)
-
 # 自底向上计算节点位置
 calculate_positions(root)
 
@@ -178,8 +184,8 @@ def collect_nodes(node):
 collect_nodes(root)
 
 if all_nodes:
-    min_x = min(node.x - NODE_WIDTH/2 for node in all_nodes) - 1
-    max_x = max(node.x + NODE_WIDTH/2 for node in all_nodes) + 1
+    min_x = min(node.x - node.width/2 for node in all_nodes) - 1
+    max_x = max(node.x + node.width/2 for node in all_nodes) + 1
     min_y = min(node.y - node.height/2 for node in all_nodes) - 1
     max_y = max(node.y + node.height/2 for node in all_nodes) + 1
     
@@ -193,5 +199,5 @@ plt.axis('off')
 plt.title(TITLE, fontsize=16, pad=20)
 
 # 保存图形
-plt.savefig(f'{TITLE}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'.\\瓜藤图\\{TITLE}.png', dpi=300, bbox_inches='tight')
 plt.show()
