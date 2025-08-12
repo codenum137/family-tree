@@ -3,17 +3,36 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.font_manager import FontProperties
 import numpy as np
+import os
+from markdown_parser import parse_markdown_family_tree
 
 # 设置中文字体
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体
 plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 
 # 文达祖后藤图
-TITLE = "文达祖后藤图"
+TITLE = "正才祖后藤图"
 
-# 加载家谱数据
-with open('.\\json_file\\' + TITLE + '.json', 'r', encoding='utf-8') as f:
-    family_data = json.load(f)
+# 加载家谱数据 - 支持markdown和json格式
+def load_family_data(title):
+    # 首先尝试加载markdown格式
+    markdown_path = f'.\\markdown_file\\{title}.md'
+    json_path = f'.\\json_file\\{title}.json'
+    
+    if os.path.exists(markdown_path):
+        print(f"加载markdown格式文件: {markdown_path}")
+        with open(markdown_path, 'r', encoding='utf-8') as f:
+            markdown_content = f.read()
+        result = parse_markdown_family_tree(markdown_content)
+        return result['data']
+    elif os.path.exists(json_path):
+        print(f"加载JSON格式文件: {json_path}")
+        with open(json_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        raise FileNotFoundError(f"找不到文件: {markdown_path} 或 {json_path}")
+
+family_data = load_family_data(TITLE)
 
 # 从JSON中读取字辈信息（如果没有则设为空列表）
 GENERATIONS = family_data.get('generations', [])

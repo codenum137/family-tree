@@ -5,6 +5,8 @@
 *.docx
 CLAUDE.md
 
+__pycache__
 json_file
 瓜藤图
 原文件
+markdown_file
