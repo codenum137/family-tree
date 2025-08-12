@@ -130,9 +130,19 @@ def draw_family_tree(node):
     for child in node.children:
         draw_family_tree(child)
     
-    # 绘制连接线
+    # 绘制连接线（折线）
     for child in node.children:
-        plt.plot([node.x, child.x], [node.y - node.height/2, child.y + child.height/2], 'k-')
+        # 计算连接点（从父节点底部到子节点顶部）
+        x1, y1 = node.x, node.y - node.height/2
+        x2, y2 = child.x, child.y + child.height/2
+        
+        # 计算中间点
+        mid_y = (y1 + y2) / 2
+        
+        # 绘制折线：垂直向下 → 水平 → 垂直向下
+        plt.plot([x1, x1], [y1, mid_y], 'k-', linewidth=1.5)  # 垂直向下
+        plt.plot([x1, x2], [mid_y, mid_y], 'k-', linewidth=1.5)  # 水平
+        plt.plot([x2, x2], [mid_y, y2], 'k-', linewidth=1.5)  # 垂直向下
     
     # 绘制节点矩形
     rect = patches.Rectangle(
