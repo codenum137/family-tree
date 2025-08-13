@@ -170,10 +170,10 @@ def set_y_coordinates(node, y=0):
         set_y_coordinates(child, y - y_spacing)
 
 # 绘制家谱图
-def draw_family_tree(node):
+def draw_family_tree(node, ax):
     # 绘制节点
     for child in node.children:
-        draw_family_tree(child)
+        draw_family_tree(child, ax)
     
     # 绘制连接线（折线）
     for child in node.children:
@@ -232,7 +232,7 @@ def main():
     set_y_coordinates(root)
     
     # 绘制家谱图
-    draw_family_tree(root)
+    draw_family_tree(root, ax)
     
     # 设置图形范围
     all_nodes = []

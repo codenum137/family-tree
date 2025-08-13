@@ -371,7 +371,7 @@ class FamilyTreeGUI:
             set_y_coordinates(root)
             
             # 绘制家谱图
-            draw_family_tree(root)
+            draw_family_tree(root, ax)
             
             # 收集所有节点用于设置图形范围
             all_nodes = []
