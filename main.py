@@ -4,6 +4,7 @@ import matplotlib.patches as patches
 from matplotlib.font_manager import FontProperties
 import numpy as np
 import os
+import sys
 from markdown_parser import parse_markdown_family_tree
 
 # 设置中文字体
@@ -15,13 +16,30 @@ TITLE = "正才祖后藤图"
 
 # 加载家谱数据 - 支持markdown和json格式
 def load_family_data(title):
-    # 首先尝试加载markdown格式
-    markdown_path = f'.\\markdown_file\\{title}.md'
-    json_path = f'.\\json_file\\{title}.json'
+    # 检测运行环境
+    if getattr(sys, 'frozen', False):
+        # 打包环境 - 使用exe文件所在目录
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # 开发环境 - 使用当前工作目录
+        base_dir = os.getcwd()
+    
+    # 首先尝试新目录结构
+    markdown_path = os.path.join(base_dir, '家谱数据', f'{title}.md')
+    json_path = os.path.join(base_dir, 'json_file', f'{title}.json')
+    
+    # 兼容旧目录结构（仅在开发环境）
+    old_markdown_path = os.path.join(base_dir, 'markdown_file', f'{title}.md')
     
     if os.path.exists(markdown_path):
         print(f"加载markdown格式文件: {markdown_path}")
         with open(markdown_path, 'r', encoding='utf-8') as f:
+            markdown_content = f.read()
+        result = parse_markdown_family_tree(markdown_content)
+        return result['data']
+    elif not getattr(sys, 'frozen', False) and os.path.exists(old_markdown_path):
+        print(f"加载markdown格式文件: {old_markdown_path}")
+        with open(old_markdown_path, 'r', encoding='utf-8') as f:
             markdown_content = f.read()
         result = parse_markdown_family_tree(markdown_content)
         return result['data']
@@ -199,82 +217,88 @@ def draw_family_tree(node):
 fig, ax = plt.subplots(figsize=(20, 15))
 ax.set_aspect('equal')
 
-# 构建树结构
-root = build_tree(family_data)
-
-# 计算节点深度
-calculate_depth(root)
-
-# 自底向上计算节点位置
-calculate_positions(root)
-
-# 设置y坐标
-set_y_coordinates(root)
-
-# 绘制家谱图
-draw_family_tree(root)
-
-# 设置图形范围
-all_nodes = []
-def collect_nodes(node):
-    all_nodes.append(node)
-    for child in node.children:
-        collect_nodes(child)
-
-collect_nodes(root)
-
-if all_nodes:
-    min_x = min(node.x - node.width/2 for node in all_nodes) - 1
-    max_x = max(node.x + node.width/2 for node in all_nodes) + 1
-    min_y = min(node.y - node.height/2 for node in all_nodes) - 1
-    max_y = max(node.y + node.height/2 for node in all_nodes) + 1
+def main():
+    """主函数 - 当直接运行main.py时执行"""
+    # 构建树结构
+    root = build_tree(family_data)
     
-    # 添加字辈标签
-    # 获取所有存在的深度
-    depths = sorted(set(node.depth for node in all_nodes))
+    # 计算节点深度
+    calculate_depth(root)
     
-    # 绘制字辈标签（仅在GENERATIONS非空时）
-    if GENERATIONS:  # 添加判断条件
-        # 为每个深度添加字辈标签
-        for depth in depths:
-            if depth < len(GENERATIONS):
-                # 获取该深度的y坐标（取该深度任意节点的y坐标）
-                y_coord = next(node.y for node in all_nodes if node.depth == depth)
-                
-                # 根据节点深度确定标签高度
-                if depth >= 2:
-                    label_height = NODE_HEIGHT_VERTICAL
-                else:
-                    label_height = NODE_HEIGHT_HORIZONTAL
-                
-                # 添加字辈标签背景
-                label_bg = patches.FancyBboxPatch(
-                    (min_x - 4, y_coord - label_height/2),
-                    3.5, label_height,
-                    boxstyle="round,pad=0.1",
-                    linewidth=1,
-                    edgecolor='none',
-                    facecolor='#f0f0f0',
-                    alpha=0.8,
-                    zorder=2
-                )
-                ax.add_patch(label_bg)
-                
-                # 添加字辈文字
-                ax.text(min_x - 2.25, y_coord, GENERATIONS[depth], 
-                        ha='center', va='center', fontsize=10, 
-                        fontweight='bold', color='#333333', zorder=3)
+    # 自底向上计算节点位置
+    calculate_positions(root)
+    
+    # 设置y坐标
+    set_y_coordinates(root)
+    
+    # 绘制家谱图
+    draw_family_tree(root)
     
     # 设置图形范围
-    ax.set_xlim(min_x - 5, max_x)  # 扩展左侧边界以容纳字辈标签
-    plt.ylim(min_y, max_y)
+    all_nodes = []
+    def collect_nodes(node):
+        all_nodes.append(node)
+        for child in node.children:
+            collect_nodes(child)
+    
+    collect_nodes(root)
+    
+    if all_nodes:
+        min_x = min(node.x - node.width/2 for node in all_nodes) - 1
+        max_x = max(node.x + node.width/2 for node in all_nodes) + 1
+        min_y = min(node.y - node.height/2 for node in all_nodes) - 1
+        max_y = max(node.y + node.height/2 for node in all_nodes) + 1
+        
+        # 添加字辈标签
+        # 获取所有存在的深度
+        depths = sorted(set(node.depth for node in all_nodes))
+        
+        # 绘制字辈标签（仅在GENERATIONS非空时）
+        if GENERATIONS:  # 添加判断条件
+            # 为每个深度添加字辈标签
+            for depth in depths:
+                if depth < len(GENERATIONS):
+                    # 获取该深度的y坐标（取该深度任意节点的y坐标）
+                    y_coord = next(node.y for node in all_nodes if node.depth == depth)
+                    
+                    # 根据节点深度确定标签高度
+                    if depth >= 2:
+                        label_height = NODE_HEIGHT_VERTICAL
+                    else:
+                        label_height = NODE_HEIGHT_HORIZONTAL
+                    
+                    # 添加字辈标签背景
+                    label_bg = patches.FancyBboxPatch(
+                        (min_x - 4, y_coord - label_height/2),
+                        3.5, label_height,
+                        boxstyle="round,pad=0.1",
+                        linewidth=1,
+                        edgecolor='none',
+                        facecolor='#f0f0f0',
+                        alpha=0.8,
+                        zorder=2
+                    )
+                    ax.add_patch(label_bg)
+                    
+                    # 添加字辈文字
+                    ax.text(min_x - 2.25, y_coord, GENERATIONS[depth], 
+                            ha='center', va='center', fontsize=10, 
+                            fontweight='bold', color='#333333', zorder=3)
+        
+        # 设置图形范围
+        ax.set_xlim(min_x - 5, max_x)  # 扩展左侧边界以容纳字辈标签
+        plt.ylim(min_y, max_y)
+    
+    # 隐藏坐标轴
+    plt.axis('off')
+    
+    # 添加标题
+    plt.title(TITLE, fontsize=16, pad=20)
+    
+    # 保存图形
+    plt.savefig(f'.\\瓜藤图\\{TITLE}.png', dpi=300, bbox_inches='tight')
+    plt.show()
 
-# 隐藏坐标轴
-plt.axis('off')
-
-# 添加标题
-plt.title(TITLE, fontsize=16, pad=20)
-
-# 保存图形
-plt.savefig(f'.\\瓜藤图\\{TITLE}.png', dpi=300, bbox_inches='tight')
-plt.show()
+# 只有直接运行main.py时才执行主函数
+if __name__ == "__main__":
+    main()
